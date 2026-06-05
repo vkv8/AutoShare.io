@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>AutoShare.io | Eco-Friendly Shared Mobility</title>
+  <!-- Google Fonts + Leaflet CSS/JS -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #FEFBE9;
+      color: #1E2F2A;
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+
+    /* animations */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulseGlow {
+      0% { box-shadow: 0 0 0 0 rgba(44, 110, 63, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(44, 110, 63, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(44, 110, 63, 0); }
+    }
+
+    @keyframes slideInRight {
+      from {
+        opacity: 0;
+        transform: translateX(40px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .animate-fade-up {
+      animation: fadeInUp 0.6s ease forwards;
+    }
+
+    .animate-slide-right {
+      animation: slideInRight 0.5s ease forwards;
+    }
+
+    .card, .pass-card, .profile-card, .alert-card {
+      transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+    }
+
+    .card:hover, .pass-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 30px -12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-green, .btn-outline-green {
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-green:active, .btn-outline-green:active {
+      transform: scale(0.96);
+    }
+
+    .btn-green::after, .btn-outline-green::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      transform: translate(-50%, -50%);
+      transition: width 0.4s, height 0.4s;
+    }
+
+    .btn-green:active::after, .btn-outline-green:active::after {
+      width: 200px;
+      height: 200px;
+    }
+
+    /* loading pulse for buttons */
+    .pulse-once {
+      animation: pulseGlow 0.6s ease;
+    }
+
+    :root {
+      --green-primary: #2C6E3F;
+      --green-dark: #1F4F2E;
+      --green-soft: #E9F5EA;
+      --yellow-light: #FFF9E0;
+      --yellow-accent: #FFF1C1;
+      --gray-dark: #2D3E36;
+      --gray-mid: #5A6E64;
+      --white: #FFFFFF;
+      --shadow-sm: 0 8px 20px rgba(0,0,0,0.03), 0 2px 6px rgba(0,0,0,0.05);
+      --shadow-md: 0 12px 28px rgba(0,0,0,0.08);
+      --border-radius-card: 24px;
+      --silver: #C0C0C0;
+      --gold: #FFD700;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 32px;
+    }
+
+    .navbar {
+      background: var(--white);
+      box-shadow: var(--shadow-sm);
+      padding: 16px 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 1px solid rgba(44, 110, 63, 0.1);
+      backdrop-filter: blur(2px);
+    }
+
+    .nav-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .logo {
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: var(--green-primary);
+      text-decoration: none;
+      transition: transform 0.2s;
+    }
+
+    .logo:hover {
+      transform: scale(1.02);
+    }
+
+    .logo span {
+      background: var(--yellow-accent);
+      padding: 2px 10px;
+      border-radius: 40px;
+      font-size: 1rem;
+      margin-left: 4px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 28px;
+      flex-wrap: wrap;
+      list-style: none;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+      font-weight: 500;
+      color: var(--gray-dark);
+      transition: 0.2s;
+      font-size: 1rem;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .nav-links a::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: var(--green-primary);
+      transition: width 0.3s;
+    }
+
+    .nav-links a:hover::after, .nav-links a.active::after {
+      width: 100%;
+    }
+
+    .nav-links a:hover, .nav-links a.active {
+      color: var(--green-primary);
+    }
+
+    .btn-green {
+      background-color: var(--green-primary);
+      color: white;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 40px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      display: inline-block;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+
+    .btn-green:hover {
+      background-color: var(--green-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 18px rgba(44,110,63,0.2);
+    }
+
+    .btn-outline-green {
+      background: transparent;
+      border: 1.5px solid var(--green-primary);
+      color: var(--green-primary);
+      padding: 10px 24px;
+      border-radius: 40px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-outline-green:hover {
+      background: var(--green-soft);
+      transform: translateY(-2px);
+    }
+
+    .card {
+      background: var(--white);
+      border-radius: var(--border-radius-card);
+      padding: 28px 24px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid rgba(44, 110, 63, 0.08);
+    }
+
+    .grid-2, .grid-3 {
+      display: grid;
+      gap: 2rem;
+    }
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+
+    .img-placeholder {
+      background: #eef3e9;
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      object-fit: cover;
+      transition: transform 0.4s;
+    }
+    .img-placeholder:hover {
+      transform: scale(1.02);
+    }
+
+    footer {
+      background: #F3F7EA;
+      margin-top: 70px;
+      padding: 32px 0;
+      text-align: center;
+      border-top: 1px solid rgba(44,110,63,0.1);
+    }
+
+    @media (max-width: 800px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .container { padding: 0 24px; }
+      .nav-container { flex-direction: column; align-items: flex-start; }
+    }
+
+    h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
+    section { margin: 56px 0; animation: fadeInUp 0.5s ease; }
+    hr { margin: 20px 0; border-color: #e6e1c1; }
+    .profile-card {
+      background: var(--white);
+      border-radius: 20px;
+      padding: 22px;
+      text-align: center;
+      border: 1px solid #f0e7c0;
+    }
+    .form-group { margin-bottom: 20px; }
+    input, textarea {
+      width: 100%;
+      padding: 14px 18px;
+      border-radius: 20px;
+      border: 1px solid #ddd6b0;
+      background: white;
+      font-family: inherit;
+      font-size: 1rem;
+      transition: 0.2s;
+    }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--green-primary);
+      box-shadow: 0 0 0 3px rgba(44,110,63,0.2);
+    }
+    label { font-weight: 500; margin-bottom: 8px; display: block; }
+    .sim-map { background: #F1F5EA; min-height: 220px; display: flex; align-items: center; justify-content: center; border-radius: 28px; }
+    .pass-card { transition: all 0.3s; }
+    .price { font-size: 2rem; font-weight: 800; margin: 16px 0; }
+    .driver-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 1.5rem; }
+    .alert-card { background: #FFFAE6; border-left: 6px solid var(--green-primary); }
+    .qr-sim { background: #eef3e6; border-radius: 20px; padding: 12px; }
+    #liveMap { height: 320px; border-radius: 20px; z-index: 1; margin-bottom: 12px; }
+    .custom-icon { background: none; font-size: 26px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2)); }
+    .team-list { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; justify-content: center; }
+    .team-badge { background: #e9f5ea; padding: 8px 18px; border-radius: 40px; font-weight: 500; color: var(--green-primary); transition: all 0.2s; }
+    .team-badge:hover { transform: scale(1.05); background: var(--green-primary); color: white; }
+    .gold-pass { background: linear-gradient(135deg, #FFF8E7, #FFE4A3); border: 2px solid #FFD700; }
+    .silver-pass { background: linear-gradient(135deg, #F5F5F5, #E0E0E0); border: 2px solid #B0B0B0; }
+    .green-pass { background: linear-gradient(135deg, #E9F5EA, #C8E6D9); border: 2px solid #2C6E3F; }
+    .location-help { font-size: 0.75rem; margin-top: 4px; color: #6b7a6e; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="container nav-container">
+    <a href="#" class="logo" id="brandLink">AutoShare.io<span>♻️</span></a>
+    <ul class="nav-links" id="navLinks">
+      <li><a data-page="home" class="active">Home</a></li>
+      <li><a data-page="passenger">Passenger</a></li>
+      <li><a data-page="driver">Driver Portal</a></li>
+      <li><a data-page="premium">Premium Passes</a></li>
+      <li><a data-page="about">About</a></li>
+      <li><a data-page="contact">Contact</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="container" id="appRoot"></main>
+
+<footer>
+  <div class="container">
+    <p>♻️ AutoShare.io — Standard Fares. Frictionless Shared Mobility. | Student-built transit ecosystem</p>
+    <p style="margin-top: 12px; font-size: 0.85rem;">© 2025 | Eco-friendly commute, smarter cities</p>
+  </div>
+</footer>
+
+<script>
+  // ========== MOCK GEOCODER (Patna landmarks) ==========
+  const locationCoordMap = {
+    "patna junction": { lat: 25.5941, lng: 85.1376 },
+    "gandhi maidan": { lat: 25.6070, lng: 85.1350 },
+    "patna airport": { lat: 25.5913, lng: 85.0879 },
+    "boring road": { lat: 25.6075, lng: 85.1248 },
+    "frazer road": { lat: 25.6092, lng: 85.1402 },
+    "pmch": { lat: 25.5771, lng: 85.1582 },
+    "patna university": { lat: 25.6186, lng: 85.1692 },
+    "bihta": { lat: 25.5669, lng: 84.8870 }
+  };
+
+  function getCoordinatesFromLocation(locationName) {
+    const key = locationName.trim().toLowerCase();
+    if (locationCoordMap[key]) return locationCoordMap[key];
+    return null; // not found
+  }
+
+  // Fare logic: ₹10 per 1.5 km
+  function calculateFareFromDistance(distanceKm) {
+    const fare = (distanceKm / 1.5) * 10;
+    return Math.round(fare);
+  }
+
+  // ---------- PAGE DEFINITIONS ----------
+  const pages = {
+    home: `
+      <section>
+        <div class="grid-2" style="align-items: center;">
+          <div class="animate-fade-up">
+            <h1 style="font-size: 3rem; line-height: 1.2;">Standard Fares.<br>Frictionless Shared Mobility.</h1>
+            <p style="font-size: 1.2rem; margin: 24px 0 32px 0; color: #3e564b;">Smart auto-rickshaw pooling, IoT driven & community-first.</p>
+            <a href="#" data-nav="premium" class="btn-green" id="heroCtaBtn">Get Your Auto Pass →</a>
+          </div>
+          <div class="animate-slide-right">
+            <img class="img-placeholder" src="hj.png" width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23FFF1C1'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Inter' font-size='18' fill='%232C6E3F'%3EModern Auto-Rickshaw 🛺%3C/text%3E%3C/svg%3E" alt="Auto" style="width:100%; max-width:500px; border-radius: 32px;">
+          </div>
+        </div>
+        <div style="margin-top: 48px; background: var(--green-soft); padding: 28px; border-radius: 32px; animation: fadeInUp 0.8s;">
+          <h3>📌 AutoShare.io — Decentralized Micro-Transit Platform</h3>
+          <p style="margin-top: 12px;">AutoShare.io is a decentralized, student-built micro-transit platform engineered to bring absolute transparency and structure to unorganized shared public mobility. By replacing manual guesswork with an automated, coordinate-based math model tracking a clean flat rate of ₹10 per 1.5 kilometers, we completely eliminate daily verbal arguments and cash-change friction. Our unified ecosystem bridges the gap between daily commuters and transport operators through a predictable 3-Category Prepaid Auto Pass system and real-time Demand-Density Grid mapping—ensuring the lowest cost for riders and optimal fuel efficiency for drivers.</p>
+        </div>
+      </section>
+    `,
+    passenger: `
+      <section>
+        <h2 style="font-size: 2rem; margin-bottom: 28px;">🧑‍🦱 Passenger Dashboard</h2>
+        <div class="grid-2" style="gap: 2rem;">
+          <div class="card">
+            <h3>💰 Fare Calculator (₹10 per 1.5 km)</h3>
+            <div class="form-group">
+              <label>📍 Source (type or click map)</label>
+              <input type="text" id="srcInput" placeholder="e.g., Patna Junction, Gandhi Maidan" value="">
+              <div class="location-help">📍 Hint: Patna Junction, Gandhi Maidan, Airport, Boring Road</div>
+            </div>
+            <div class="form-group">
+              <label>🏁 Destination (type or click map)</label>
+              <input type="text" id="destInput" placeholder="e.g., PMCH, Frazer Road" value="">
+              <div class="location-help">📍 Try landmarks: Patna University, Bihta, etc.</div>
+            </div>
+            <button class="btn-green" id="calcFareBtn" style="width:100%;">🧮 Calculate Exact Fare</button>
+            <p id="fareResult" style="margin-top: 20px; font-weight: 600; background: #FEF2CF; padding: 12px; border-radius: 20px;">✨ Select source/destination by typing or map click</p>
+          </div>
+          <div class="card">
+            <h3>🗺️ Live Interactive Map</h3>
+            <div id="liveMap"></div>
+            <button id="resetMapBtn" class="btn-outline-green" style="margin-top: 12px; width:100%;">🗑️ Reset All Markers & Inputs</button>
+            <p style="margin-top: 12px; font-size: 0.85rem;">Click map: 1st = Source, 2nd = Destination → auto fill inputs & fare</p>
+          </div>
+        </div>
+        <div class="card" style="margin-top: 32px;">
+          <h3>📱 IoT Auto Check-In</h3>
+          <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+            <div style="flex:2">
+              <label>Enter Auto Number</label>
+              <input type="text" placeholder="e.g., BR01AB1234" id="autoNumberInput">
+            </div>
+            <div style="flex:1">
+              <button class="btn-green" id="scanQrBtn" style="width:100%;">🔍 Scan & Verify QR</button>
+            </div>
+          </div>
+          <div id="qrFeedback" style="margin-top: 16px; font-size: 0.9rem; color: #2C6E3F;"></div>
+          <div class="qr-sim" style="margin-top: 20px; text-align: center;">📸 [QR Code Scanner Simulation]</div>
+        </div>
+      </section>
+    `,
+    driver: `
+      <section>
+        <h2 style="font-size: 2rem; margin-bottom: 28px;">🚖 Driver Portal | Real-time Analytics</h2>
+        <div class="driver-stat-grid">
+          <div class="card animate-fade-up"><h3>💰 Daily Earnings</h3><p style="font-size: 2rem; font-weight: 700;">₹0.00</p><span>Today's trips will reflect</span></div>
+          <div class="card animate-fade-up" style="animation-delay: 0.1s;"><h3>🔄 Active Rides</h3><p style="font-size: 2rem; font-weight: 700;">0</p><span>Pending requests</span></div>
+          <div class="card animate-fade-up" style="animation-delay: 0.2s;"><h3>⛽ Fuel Efficiency</h3><p style="font-size: 1.5rem;">27 km/L</p><span>Eco driving score: A+</span></div>
+        </div>
+        <div class="card alert-card" style="margin-top: 24px;">
+          <h3>🚨 Live Request Simulation</h3>
+          <p style="font-size: 1.2rem;">Alert: 2 Passengers waiting at Patna Junction Exit 2 · Request ID: #AUT432</p>
+          <button class="btn-outline-green" style="margin-top: 12px;" id="acceptRideBtn">Accept Ride →</button>
+        </div>
+      </section>
+    `,
+    premium: `
+      <section>
+        <h2 style="font-size: 2rem; margin-bottom: 12px;">✨ Prepaid Auto Pass Framework</h2>
+        <p style="margin-bottom: 40px;">Budget predictability — three tiers for every commuter</p>
+        <div class="grid-3">
+          <div class="card pass-card green-pass animate-fade-up">
+            <h3>🌿 Green Pass</h3>
+            <div class="price">₹300<span style="font-size: 1rem;">/mo</span></div>
+            <p>Fixed Daily Student Route<br> • Mon-Fri assured seat<br> • Economical</p>
+            <button class="btn-outline-green buy-now-btn" data-plan="Green Pass (₹300/mo)">Buy Now</button>
+          </div>
+          <div class="card pass-card silver-pass animate-fade-up" style="animation-delay: 0.1s;">
+            <h3>⚙️ Silver Pass</h3>
+            <div class="price">₹500<span style="font-size: 1rem;">/mo</span></div>
+            <p>Weekly Flexible Kilometer Packet<br> • 200 km/week<br> • Transferable</p>
+            <button class="btn-outline-green buy-now-btn" data-plan="Silver Pass (₹500/mo)">Buy Now</button>
+          </div>
+          <div class="card pass-card gold-pass animate-fade-up" style="animation-delay: 0.2s;">
+            <h3>✨ Gold Pass</h3>
+            <div class="price">₹1000<span style="font-size: 1rem;">/mo</span></div>
+            <p>Unlimited Rides + Priority<br> • Zero surge<br> • VIP access</p>
+            <button class="btn-green buy-now-btn" data-plan="Gold Pass (₹1000/mo)" style="background:#D4AF37; color:#1F4F2E;">Buy Now →</button>
+          </div>
+        </div>
+        <div id="checkoutMsg" style="margin-top: 32px; text-align: center; background: var(--yellow-light); padding: 16px; border-radius: 40px;"></div>
+      </section>
+    `,
+    about: `
+      <section>
+        <div style="max-width: 1000px; margin-bottom: 48px;">
+          <h2 style="font-size: 2rem;">🌍 Our Mission: Transforming Local Mobility</h2>
+          <p style="font-size: 1.1rem; margin-top: 16px;">At AutoShare.io, we are building a community-driven transit ecosystem engineered by students, for students and daily commuters. Our goal is to bring digital transformation, transparency, and structure to the unorganized shared public transit sector without relying on heavy corporate platform fees or dynamic surge pricing models.</p>
+          <div style="margin: 32px 0 24px 0; background: #FFF6E0; padding: 24px; border-radius: 28px;">
+            <h3>📐 Core Pillars Of Our Platform:</h3>
+            <ul style="margin-top: 16px; list-style-type: none;">
+              <li>✅ <strong>Distance-Verified Fares:</strong> ₹10 per 1.5km, automated coordinate-based math.</li>
+              <li>✅ <strong>3-Category Auto Pass:</strong> Green, Silver, Gold for budget predictability.</li>
+              <li>✅ <strong>Live Demand-Density Syncing:</strong> Reducing empty cruising & wait times.</li>
+            </ul>
+          </div>
+        </div>
+        <h3>🌟 Team Infinite (BCA Innovators)</h3>
+        <div class="team-list">
+          <span class="team-badge">Vaibhav</span><span class="team-badge">Anjali</span><span class="team-badge">Ankush</span>
+          <span class="team-badge">Ayansh</span><span class="team-badge">Khashish</span><span class="team-badge">Priyesh</span><span class="team-badge">Afiya</span>
+        </div>
+        <div style="margin-top: 48px; background: white; border-radius: 28px; padding: 24px; border-left: 8px solid #2C6E3F;">
+          <p>⚡ “Affordable, reliable, green mobility for every student and daily commuter.” — Team Infinite</p>
+        </div>
+      </section>
+    `,
+    contact: `
+      <section>
+        <h2 style="font-size: 2rem;">📬 Get in Touch</h2>
+        <p style="margin-bottom: 32px;">Feedback, driver partnership, or queries — we're a message away.</p>
+        <div class="grid-2" style="align-items: start;">
+          <div class="card">
+            <form id="contactForm">
+              <div class="form-group"><label>Full Name</label><input type="text" id="fullName" required></div>
+              <div class="form-group"><label>Email ID</label><input type="email" id="emailId" required></div>
+              <div class="form-group"><label>Phone Number</label><input type="tel" id="phoneNum"></div>
+              <div class="form-group"><label>Message</label><textarea rows="4"></textarea></div>
+              <button type="submit" class="btn-green">Send Message ✉️</button>
+              <p id="formFeedback" style="margin-top: 16px;"></p>
+            </form>
+          </div>
+          <div class="card" style="background: #FFF9E6;">
+            <h3>📞 Support & Office</h3>
+            <p>📍 Patna Smart Mobility Hub, Bihar<br>📧 support@autoshare.io<br>📞 +91-620-XXXXXXX</p>
+            <p><strong>Social:</strong> @AutoShare_io</p>
+          </div>
+        </div>
+      </section>
+    `
+  };
+
+  // -------- GLOBALS --------
+  let currentPage = 'home';
+  let mapInstance = null;
+  let sourceMarker = null, destMarker = null;
+  let markersList = [];
+  let currentPolyline = null;
+
+  function renderPage(pageId) {
+    if (!pages[pageId]) pageId = 'home';
+    document.getElementById('appRoot').innerHTML = pages[pageId];
+    currentPage = pageId;
+    // update nav active
+    document.querySelectorAll('.nav-links a').forEach(link => {
+      const pg = link.getAttribute('data-page');
+      if (pg === pageId) link.classList.add('active');
+      else link.classList.remove('active');
+    });
+    attachPageEvents(pageId);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Helper to update fare from coordinates
+  function updateFareFromLatLngs(srcLatLng, destLatLng) {
+    if (!srcLatLng || !destLatLng) return;
+    const distanceKm = srcLatLng.distanceTo(destLatLng) / 1000;
+    const fare = calculateFareFromDistance(distanceKm);
+    const fareResultDiv = document.getElementById('fareResult');
+    if (fareResultDiv) {
+      fareResultDiv.innerHTML = `📏 Distance: ${distanceKm.toFixed(2)} km | 💰 Fare: ₹${fare} (₹10 per 1.5km)`;
+      fareResultDiv.classList.add('pulse-once');
+      setTimeout(() => fareResultDiv.classList.remove('pulse-once'), 600);
+    }
+    return fare;
+  }
+
+  // Draw route and update fare + inputs
+  function syncMapWithTextInputs() {
+    const srcText = document.getElementById('srcInput')?.value;
+    const destText = document.getElementById('destInput')?.value;
+    if (!srcText || !destText) return;
+    const srcCoord = getCoordinatesFromLocation(srcText);
+    const destCoord = getCoordinatesFromLocation(destText);
+    if (!srcCoord || !destCoord) {
+      document.getElementById('fareResult').innerHTML = '⚠️ Location not recognized. Use landmarks: Patna Junction, Gandhi Maidan, Airport etc.';
+      return;
+    }
+    // remove existing markers
+    markersList.forEach(m => mapInstance.removeLayer(m));
+    markersList = [];
+    sourceMarker = L.marker([srcCoord.lat, srcCoord.lng], { icon: L.divIcon({ html: '🚩', className: 'custom-icon', iconSize: [24,24] }) }).addTo(mapInstance);
+    destMarker = L.marker([destCoord.lat, destCoord.lng], { icon: L.divIcon({ html: '🏁', className: 'custom-icon', iconSize: [24,24] }) }).addTo(mapInstance);
+    markersList = [sourceMarker, destMarker];
+    if (currentPolyline) mapInstance.removeLayer(currentPolyline);
+    currentPolyline = L.polyline([sourceMarker.getLatLng(), destMarker.getLatLng()], { color: '#2C6E3F', weight: 4 }).addTo(mapInstance);
+    mapInstance.fitBounds([sourceMarker.getLatLng(), destMarker.getLatLng()]);
+    updateFareFromLatLngs(sourceMarker.getLatLng(), destMarker.getLatLng());
+  }
+
+  function initPassengerMap() {
+    const mapDiv = document.getElementById('liveMap');
+    if (!mapDiv) return;
+    if (mapInstance) mapInstance.remove();
+    mapInstance = L.map('liveMap').setView([25.5941, 85.1376], 13);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+    }).addTo(mapInstance);
+    markersList = [];
+    sourceMarker = null;
+    destMarker = null;
+    currentPolyline = null;
+    const srcInput = document.getElementById('srcInput');
+    const destInput = document.getElementById('destInput');
+    const fareDiv = document.getElementById('fareResult');
+
+    mapInstance.on('click', function(e) {
+      if (markersList.length === 0) {
+        sourceMarker = L.marker(e.latlng, { icon: L.divIcon({ html: '🚩', className: 'custom-icon', iconSize: [24,24] }) }).addTo(mapInstance);
+        markersList.push(sourceMarker);
+        srcInput.value = `${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
+        fareDiv.innerHTML = `📍 Source set at ${e.latlng.lat.toFixed(4)}. Now click destination.`;
+      } else if (markersList.length === 1) {
+        destMarker = L.marker(e.latlng, { icon: L.divIcon({ html: '🏁', className: 'custom-icon', iconSize: [24,24] }) }).addTo(mapInstance);
+        markersList.push(destMarker);
+        destInput.value = `${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
+        if (currentPolyline) mapInstance.removeLayer(currentPolyline);
+        currentPolyline = L.polyline([sourceMarker.getLatLng(), destMarker.getLatLng()], { color: '#2C6E3F', weight: 4 }).addTo(mapInstance);
+        updateFareFromLatLngs(sourceMarker.getLatLng(), destMarker.getLatLng());
+      } else {
+        alert('Already have source & destination. Use Reset button to start over.');
+      }
+    });
+
+    const resetBtn = document.getElementById('resetMapBtn');
+    if (resetBtn) {
+      resetBtn.onclick = () => {
+        markersList.forEach(m => mapInstance.removeLayer(m));
+        markersList = [];
+        sourceMarker = null;
+        destMarker = null;
+        if (currentPolyline) mapInstance.removeLayer(currentPolyline);
+        srcInput.value = '';
+        destInput.value = '';
+        fareDiv.innerHTML = '✨ Reset. Choose by typing or map click.';
+      };
+    }
+
+    // Listen to manual text changes
+    srcInput.addEventListener('change', () => {
+      if (destInput.value.trim() !== '') syncMapWithTextInputs();
+    });
+    destInput.addEventListener('change', () => {
+      if (srcInput.value.trim() !== '') syncMapWithTextInputs();
+    });
+  }
+
+  function attachPageEvents(page) {
+    if (page === 'passenger') {
+      initPassengerMap();
+      const calcBtn = document.getElementById('calcFareBtn');
+      if (calcBtn) {
+        calcBtn.onclick = () => {
+          const srcText = document.getElementById('srcInput').value;
+          const destText = document.getElementById('destInput').value;
+          if (!srcText || !destText) {
+            alert('Please enter both source and destination (or use map).');
+            return;
+          }
+          // if text fields contain coordinates or landmarks
+          let srcCoord = null, destCoord = null;
+          if (srcText.includes(',') && !isNaN(parseFloat(srcText.split(',')[0]))) {
+            const [lat, lng] = srcText.split(',').map(Number);
+            srcCoord = { lat, lng };
+          } else srcCoord = getCoordinatesFromLocation(srcText);
+          if (destText.includes(',') && !isNaN(parseFloat(destText.split(',')[0]))) {
+            const [lat, lng] = destText.split(',').map(Number);
+            destCoord = { lat, lng };
+          } else destCoord = getCoordinatesFromLocation(destText);
+          if (!srcCoord || !destCoord) {
+            document.getElementById('fareResult').innerHTML = '❌ Could not recognize location. Try landmarks: Patna Junction, Gandhi Maidan.';
+            return;
+          }
+          const distance = L.latLng(srcCoord.lat, srcCoord.lng).distanceTo(L.latLng(destCoord.lat, destCoord.lng)) / 1000;
+          const fare = calculateFareFromDistance(distance);
+          document.getElementById('fareResult').innerHTML = `📍 Distance: ${distance.toFixed(2)} km | 💰 Fare: ₹${fare} (₹10 per 1.5km)`;
+        };
+      }
+      const scanBtn = document.getElementById('scanQrBtn');
+      if (scanBtn) {
+        scanBtn.onclick = () => {
+          const autoNum = document.getElementById('autoNumberInput')?.value.trim();
+          const fb = document.getElementById('qrFeedback');
+          if (!autoNum) fb.innerText = '⚠️ Enter Auto Number';
+          else fb.innerHTML = `✅ QR Verified! Auto ${autoNum} checked-in. Boarding approved 🚦`;
+        };
+      }
+    }
+    if (page === 'premium') {
+      document.querySelectorAll('.buy-now-btn').forEach(btn => {
+        btn.onclick = (e) => {
+          const plan = btn.getAttribute('data-plan');
+          alert(`🎉 Congratulations! You successfully bought ${plan}. 🎉`);
+          document.getElementById('checkoutMsg').innerHTML = `✅ ${plan} purchased. Thank you for choosing AutoShare!`;
+        };
+      });
+    }
+    if (page === 'contact') {
+      const form = document.getElementById('contactForm');
+      if (form) {
+        form.onsubmit = (e) => {
+          e.preventDefault();
+          const name = document.getElementById('fullName').value;
+          const email = document.getElementById('emailId').value;
+          if (name && email) document.getElementById('formFeedback').innerHTML = `✨ Thanks ${name}! We'll contact you soon.`;
+          else document.getElementById('formFeedback').innerHTML = '❌ Fill required fields.';
+          form.reset();
+        };
+      }
+    }
+    if (page === 'home') {
+      const cta = document.getElementById('heroCtaBtn');
+      if (cta) cta.onclick = (e) => { e.preventDefault(); renderPage('premium'); };
+    }
+    if (page === 'driver') {
+      const accept = document.getElementById('acceptRideBtn');
+      if (accept) accept.onclick = () => alert('🚀 Ride accepted (simulation). Passenger notified!');
+    }
+  }
+
+  function initRouting() {
+    document.querySelectorAll('.nav-links a').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        renderPage(link.getAttribute('data-page'));
+      });
+    });
+    document.getElementById('brandLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      renderPage('home');
+    });
+    renderPage('home');
+  }
+  window.addEventListener('DOMContentLoaded', initRouting);
+</script>
+</body>
+</html>
